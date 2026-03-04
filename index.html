@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ev Bütçesi Takip Sistemi</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h1>Ev Bütçesi</h1>
+            <div class="theme-toggle">
+                <button id="themeToggleBtn" aria-label="Temayı Değiştir">🌙/☀️</button>
+            </div>
+        </header>
+
+        <main>
+            <section class="summary-cards">
+                <div class="card glass">
+                    <h3>Toplam Bakiye</h3>
+                    <p id="totalBalance" class="amount positive">₺0.00</p>
+                </div>
+                <div class="card glass">
+                    <h3>Aylık Gelir</h3>
+                    <p id="monthlyIncome" class="amount positive">₺0.00</p>
+                </div>
+                <div class="card glass">
+                    <h3>Aylık Gider</h3>
+                    <p id="monthlyExpense" class="amount negative">₺0.00</p>
+                </div>
+            </section>
+
+            <div class="content-grid">
+                <section class="form-section glass">
+                    <h2>İşlem Ekle</h2>
+                    <form id="transactionForm">
+                        <div class="form-group">
+                            <label for="type">İşlem Türü</label>
+                            <select id="type" required>
+                                <option value="income">Gelir (Maaş vb.)</option>
+                                <option value="expense">Gider (Fatura, Kredi vb.)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="description">Açıklama</label>
+                            <input type="text" id="description" placeholder="Örn: Elektrik Faturası" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="amount">Tutar</label>
+                            <input type="number" id="amount" placeholder="Örn: 500" min="0.01" step="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="date">Tarih</label>
+                            <input type="date" id="date" required>
+                        </div>
+                        <button type="submit" class="btn-primary">Ekle</button>
+                    </form>
+                </section>
+
+                <section class="charts-section glass">
+                    <h2>Finansal Analiz</h2>
+                    <div class="chart-container">
+                        <canvas id="monthlyChart"></canvas>
+                    </div>
+                </section>
+            </div>
+
+            <section class="history-section glass">
+                <h2>İşlem Geçmişi</h2>
+                <div class="table-container">
+                    <table id="transactionTable">
+                        <thead>
+                            <tr>
+                                <th>Tarih</th>
+                                <th>Açıklama</th>
+                                <th>Tür</th>
+                                <th>Tutar</th>
+                                <th>İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactionList">
+                            <!-- Transactions will be added here via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="main.js"></script>
+</body>
+</html>
