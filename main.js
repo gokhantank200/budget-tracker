@@ -2,6 +2,11 @@
 let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
 let isDarkMode = localStorage.getItem('theme') === 'dark';
 
+// Current Filter State
+const currentDate = new Date();
+let selectedYear = currentDate.getFullYear();
+let selectedMonth = currentDate.getMonth(); // 0-11
+
 // DOM Elements
 const themeToggleBtn = document.getElementById('themeToggleBtn');
 const transactionForm = document.getElementById('transactionForm');
@@ -11,7 +16,19 @@ const monthlyExpenseEl = document.getElementById('monthlyExpense');
 const transactionListEl = document.getElementById('transactionList');
 const ctx = document.getElementById('monthlyChart').getContext('2d');
 
+const monthSelector = document.getElementById('monthSelector');
+const dashboardView = document.getElementById('dashboardView');
+const historyView = document.getElementById('historyView');
+const viewHistoryBtn = document.getElementById('viewHistoryBtn');
+const backBtn = document.getElementById('backBtn');
+const historyMonthName = document.getElementById('historyMonthName');
+
 let chartInstance = null;
+
+const monthNames = [
+  "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
+  "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"
+];
 
 // Initialize App
 function init() {
@@ -24,12 +41,40 @@ function init() {
     themeToggleBtn.textContent = '🌙';
   }
 
+  // Set month selector to current month
+  const monthString = (selectedMonth + 1).toString().padStart(2, '0');
+  monthSelector.value = `${selectedYear}-${monthString}`;
+
   // Event Listeners
   themeToggleBtn.addEventListener('click', toggleTheme);
   transactionForm.addEventListener('submit', addTransaction);
+  
+  monthSelector.addEventListener('change', (e) => {
+    if (e.target.value) {
+      const [year, month] = e.target.value.split('-');
+      selectedYear = parseInt(year);
+      selectedMonth = parseInt(month) - 1;
+      updateUI();
+    }
+  });
+
+  viewHistoryBtn.addEventListener('click', showHistoryView);
+  backBtn.addEventListener('click', showDashboardView);
 
   // Render initial state
   updateUI();
+}
+
+// View Management
+function showHistoryView() {
+  dashboardView.classList.add('hidden');
+  historyView.classList.remove('hidden');
+  historyMonthName.textContent = `${monthNames[selectedMonth]} ${selectedYear}`;
+}
+
+function showDashboardView() {
+  historyView.classList.add('hidden');
+  dashboardView.classList.remove('hidden');
 }
 
 // Theme Toggle
@@ -103,15 +148,21 @@ function updateUI() {
   updateChart();
 }
 
-// Render Table
+// Render Table (Filtered by Month)
 function renderList() {
   transactionListEl.innerHTML = '';
   
+  // Filter by selected month and year
+  const filtered = transactions.filter(t => {
+    const d = new Date(t.date);
+    return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+  });
+
   // Sort by date descending
-  const sorted = [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const sorted = [...filtered].sort((a, b) => new Date(b.date) - new Date(a.date));
 
   if (sorted.length === 0) {
-    transactionListEl.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--text-muted)">Henüz işlem bulunmamaktadır.</td></tr>`;
+    transactionListEl.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--text-muted)">Bu ay için henüz işlem bulunmamaktadır.</td></tr>`;
     return;
   }
 
@@ -137,30 +188,25 @@ function renderList() {
   });
 }
 
-// Update Summary Cards
+// Update Summary Cards (Filtered by Month)
 function updateSummary() {
-  const currentMonthFilter = new Date().getMonth();
-  const currentYearFilter = new Date().getFullYear();
-
-  let totalIncome = 0;
-  let totalExpense = 0;
   let monthlyIncome = 0;
   let monthlyExpense = 0;
 
   transactions.forEach(t => {
     const tDate = new Date(t.date);
-    const isCurrentMonth = tDate.getMonth() === currentMonthFilter && tDate.getFullYear() === currentYearFilter;
+    const isSelectedMonth = tDate.getMonth() === selectedMonth && tDate.getFullYear() === selectedYear;
 
-    if (t.type === 'income') {
-      totalIncome += t.amount;
-      if (isCurrentMonth) monthlyIncome += t.amount;
-    } else {
-      totalExpense += t.amount;
-      if (isCurrentMonth) monthlyExpense += t.amount;
+    if (isSelectedMonth) {
+      if (t.type === 'income') {
+        monthlyIncome += t.amount;
+      } else {
+        monthlyExpense += t.amount;
+      }
     }
   });
 
-  const totalBalance = totalIncome - totalExpense;
+  const totalBalance = monthlyIncome - monthlyExpense;
 
   // Format currency
   const formatCurrency = (amount) => `₺${amount.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
@@ -173,33 +219,50 @@ function updateSummary() {
   totalBalanceEl.className = totalBalance >= 0 ? 'amount positive' : 'amount negative';
 }
 
-// Chart.js Setup
+// Chart.js Setup (Filtered by Month)
 function updateChart() {
-  // Calculate data by category/type for current month
-  const currentMonthFilter = new Date().getMonth();
-  const currentYearFilter = new Date().getFullYear();
-  
   let income = 0;
   let expense = 0;
 
   transactions.forEach(t => {
     const tDate = new Date(t.date);
-    if (tDate.getMonth() === currentMonthFilter && tDate.getFullYear() === currentYearFilter) {
+    if (tDate.getMonth() === selectedMonth && tDate.getFullYear() === selectedYear) {
       if (t.type === 'income') income += t.amount;
       if (t.type === 'expense') expense += t.amount;
     }
   });
+  
+  // Update canvas opacity if no data
+  if (income === 0 && expense === 0) {
+      // Create empty chart placeholder if desired, or let it render 0s
+      income = 0.01; // tiny wedge to keep chart rendering, or just leave it blank
+      expense = 0.01; // Not ideal, but Chart.js usually handles 0s gracefully
+  }
 
   const textColor = getComputedStyle(document.body).getPropertyValue('--text-main').trim();
-  const gridColor = getComputedStyle(document.body).getPropertyValue('--card-border').trim();
   const successColor = getComputedStyle(document.body).getPropertyValue('--success').trim();
   const dangerColor = getComputedStyle(document.body).getPropertyValue('--danger').trim();
+  const mutedColor = getComputedStyle(document.body).getPropertyValue('--text-muted').trim();
+
+  // Revert 0.01 dummy data check if truly no data
+  let chartDataValues = [income, expense];
+  let bgColors = [successColor, dangerColor];
+  
+  if (income <= 0.01 && expense <= 0.01) {
+    chartDataValues = [1];
+    bgColors = [mutedColor + '40']; // transparent mutted
+  } else {
+    // Reset to exact values
+    let totalActIncome = income <= 0.01 ? 0 : income;
+    let totalActExpense = expense <= 0.01 ? 0 : expense;
+    chartDataValues = [totalActIncome, totalActExpense];
+  }
 
   const data = {
-    labels: ['Gelir', 'Gider'],
+    labels: (income <= 0.01 && expense <= 0.01) ? ['Veri Yok'] : ['Gelir', 'Gider'],
     datasets: [{
-      data: [income, expense],
-      backgroundColor: [successColor, dangerColor],
+      data: chartDataValues,
+      backgroundColor: bgColors,
       borderWidth: 0,
       hoverOffset: 4
     }]
@@ -222,6 +285,7 @@ function updateChart() {
         tooltip: {
           callbacks: {
             label: function(context) {
+              if (income <= 0.01 && expense <= 0.01) return 'Bu ay için veri yok';
               let label = context.label || '';
               if (label) {
                 label += ': ';
